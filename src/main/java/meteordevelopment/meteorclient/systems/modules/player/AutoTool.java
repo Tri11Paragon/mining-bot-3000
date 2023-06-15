@@ -186,6 +186,10 @@ public class AutoTool extends Module {
         if (!good.test(itemStack) || !isTool(itemStack)) return -1;
         if (!itemStack.isSuitableFor(state) && !(itemStack.getItem() instanceof SwordItem && (state.getBlock() instanceof BambooBlock || state.getBlock() instanceof BambooSaplingBlock))) return -1;
 
+        // do not attempt to switch tools when the block can be instant mined
+        if (state.getBlock().getHardness() < 0.1)
+            return -1;
+
         if (silkTouchEnderChest
             && state.getBlock() == Blocks.ENDER_CHEST
             && EnchantmentHelper.getLevel(Enchantments.SILK_TOUCH, itemStack) == 0) {

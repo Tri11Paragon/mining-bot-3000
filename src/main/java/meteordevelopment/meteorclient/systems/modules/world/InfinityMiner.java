@@ -28,6 +28,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.item.PickaxeItem;
 import net.minecraft.network.packet.s2c.play.DisconnectS2CPacket;
+import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 
@@ -233,7 +234,7 @@ public class InfinityMiner extends Module {
         for (int i = 0; i <= 35; i++) {
             ItemStack itemStack = mc.player.getInventory().getStack(i);
             if (itemStack.isEmpty()) return false;
-            
+
             for (Item item : targetItems.get()) {
                 if (itemStack.getItem() == item && itemStack.getCount() < itemStack.getMaxCount()) {
                     return false;

@@ -17,13 +17,14 @@ import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventHandler;
 import meteordevelopment.orbit.EventPriority;
-import net.minecraft.block.BambooBlock;
-import net.minecraft.block.BambooSaplingBlock;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
+import net.fabricmc.yarn.constants.MiningLevels;
+import net.minecraft.block.*;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.enchantment.Enchantments;
 import net.minecraft.item.*;
+import net.minecraft.registry.tag.BlockTags;
+import net.minecraft.block.Material;
+import net.minecraft.block.BlockState;
 
 import java.util.List;
 import java.util.function.Predicate;
@@ -153,7 +154,9 @@ public class AutoTool extends Module {
             if (listMode.get() == ListMode.Whitelist && !whitelist.get().contains(itemStack.getItem())) continue;
             if (listMode.get() == ListMode.Blacklist && blacklist.get().contains(itemStack.getItem())) continue;
 
+            System.out.println("Tested item " + i + "(" + itemStack.getItem().getName().getString() + ")");
             double score = getScore(itemStack, blockState, silkTouchForEnderChest.get(), prefer.get(), itemStack2 -> !shouldStopUsing(itemStack2));
+            System.out.println("\twith score " + score);
             if (score < 0) continue;
 
             if (score > bestScore) {
@@ -168,6 +171,10 @@ public class AutoTool extends Module {
             if (ticks == 0) InvUtils.swap(bestSlot, true);
             else shouldSwitch = true;
         }
+        System.out.println("Should Switch? " + shouldSwitch);
+        System.out.println("Best Score: " + bestScore);
+        System.out.println("Best Slot: " + bestSlot);
+        System.out.println();
 
         // Anti break
         currentStack = mc.player.getMainHandStack();
@@ -183,16 +190,26 @@ public class AutoTool extends Module {
     }
 
     public static double getScore(ItemStack itemStack, BlockState state, boolean silkTouchEnderChest, EnchantPreference enchantPreference, Predicate<ItemStack> good) {
-        if (!good.test(itemStack) || !isTool(itemStack)) return -1;
-        if (!itemStack.isSuitableFor(state) && !(itemStack.getItem() instanceof SwordItem && (state.getBlock() instanceof BambooBlock || state.getBlock() instanceof BambooSaplingBlock))) return -1;
+        if (!good.test(itemStack) || !isTool(itemStack)) {
+            System.out.println("-Item failed!");
+            return -1;
+        }
+
+        boolean hasSilkTouch = EnchantmentHelper.getLevel(Enchantments.SILK_TOUCH, itemStack) != 0;
+        System.out.println(Material.GLASS);
+        boolean canMineAnyways = state.getMaterial() == Material.GLASS && hasSilkTouch;
+
+        // TODO: this is messy
+        if (!itemStack.isSuitableFor(state) && !canMineAnyways && !(itemStack.getItem() instanceof SwordItem && (state.getBlock() instanceof BambooBlock || state.getBlock() instanceof BambooSaplingBlock))) {
+            System.out.println("-Item not suitable for!");
+            return -1;
+        }
 
         // do not attempt to switch tools when the block can be instant mined
         if (state.getBlock().getHardness() < 0.1)
             return -1;
 
-        if (silkTouchEnderChest
-            && state.getBlock() == Blocks.ENDER_CHEST
-            && EnchantmentHelper.getLevel(Enchantments.SILK_TOUCH, itemStack) == 0) {
+        if (silkTouchEnderChest && state.getBlock() == Blocks.ENDER_CHEST && !hasSilkTouch) {
             return -1;
         }
 
@@ -209,6 +226,9 @@ public class AutoTool extends Module {
         if (itemStack.getItem() instanceof SwordItem item && (state.getBlock() instanceof BambooBlock || state.getBlock() instanceof BambooSaplingBlock))
             score += 9000 + (item.getMaterial().getMiningLevel() * 1000);
 
+        // prefer mining glass with pickaxes
+        //if (canMineAnyways && itemStack.getItem() instanceof PickaxeItem)
+        //    score += 10;
 
         return score;
     }

@@ -153,7 +153,10 @@ public class AutoTool extends Module {
     private final Setting<List<Item>> antiSwitchWhitelist = sgOther.add(new ItemListSetting.Builder()
         .name("anti-switch-whitelist")
         .description("The tools you don't want to switch away from when using. Eg World Edit Axe")
-        .defaultValue(Items.WOODEN_AXE)
+        .defaultValue(
+            Items.WOODEN_AXE,
+            Items.STICK
+        )
         .filter(AutoTool::isTool)
         .build()
     );

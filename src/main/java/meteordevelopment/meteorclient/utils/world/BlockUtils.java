@@ -245,16 +245,23 @@ public class BlockUtils {
             || block instanceof TrapdoorBlock;
     }
 
-    public static MobSpawn isValidMobSpawn(BlockPos blockPos, boolean newMobSpawnLightLevel) {
+    public static MobSpawn isValidMobSpawn(BlockPos blockPos, boolean newMobSpawnLightLevel){
+        return isValidMobSpawn(blockPos, newMobSpawnLightLevel, false);
+    }
+
+    public static MobSpawn isValidMobSpawn(BlockPos blockPos, boolean newMobSpawnLightLevel, boolean ignoreLightLevel) {
         int spawnLightLimit = newMobSpawnLightLevel ? 0 : 7;
         if (!(mc.world.getBlockState(blockPos).getBlock() instanceof AirBlock) ||
             mc.world.getBlockState(blockPos.down()).getBlock() == Blocks.BEDROCK) return MobSpawn.Never;
 
         if (!topSurface(mc.world.getBlockState(blockPos.down()))) {
-            if (mc.world.getBlockState(blockPos.down()).getCollisionShape(mc.world, blockPos.down()) != VoxelShapes.fullCube())
+            if (mc.world.getBlockState(blockPos.down()).getCollisionShape(mc.world, blockPos.down()) != VoxelShapes.fullCube() && mc.world.getBlockState(blockPos.down()).getBlock() != Blocks.SOUL_SAND)
                 return MobSpawn.Never;
             if (mc.world.getBlockState(blockPos.down()).isTransparent(mc.world, blockPos.down())) return MobSpawn.Never;
         }
+
+        if (ignoreLightLevel)
+            return MobSpawn.Potential;
 
         if (mc.world.getLightLevel(blockPos, 0) <= spawnLightLimit) return MobSpawn.Potential;
         else if (mc.world.getLightLevel(LightType.BLOCK, blockPos) <= spawnLightLimit) return MobSpawn.Always;

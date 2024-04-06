@@ -102,7 +102,7 @@ public class SpawnProofer extends Module {
 
         // Find slot
         // not sure why hotbar ends at 8 instead of 9? spawn proofing is annoying missing the last slot
-        boolean foundBlock = InvUtils.testInHotbar(itemStack -> blocks.get().contains(Block.getBlockFromItem(itemStack.getItem())), SlotUtils.HOTBAR_START, SlotUtils.HOTBAR_END+1);
+        boolean foundBlock = InvUtils.testInHotbar(itemStack -> blocks.get().contains(Block.getBlockFromItem(itemStack.getItem())), SlotUtils.HOTBAR_START, SlotUtils.HOTBAR_END + 1);
         if (!foundBlock) {
             error("Found none of the chosen blocks in hotbar");
             toggle();
@@ -112,14 +112,15 @@ public class SpawnProofer extends Module {
         // Find spawn locations
         for (BlockPos.Mutable blockPos : spawns) spawnPool.free(blockPos);
         spawns.clear();
+
+        int lightLevel = newMobSpawnLightLevel.get() ? 0 : 7;
         BlockIterator.register(range.get(), range.get(), (blockPos, blockState) -> {
             BlockUtils.MobSpawn spawn = BlockUtils.isValidMobSpawn(blockPos, newMobSpawnLightLevel.get(), ignoreLightLevel.get());
 
             if (ignoreBlockType.get() && !(mc.world.getBlockState(blockPos).getBlock() instanceof AirBlock))
                 spawn = BlockUtils.MobSpawn.Always;
-
             if ((spawn == BlockUtils.MobSpawn.Always && (mode.get() == Mode.Always || mode.get() == Mode.Both)) ||
-                    spawn == BlockUtils.MobSpawn.Potential && (mode.get() == Mode.Potential || mode.get() == Mode.Both)) {
+                spawn == BlockUtils.MobSpawn.Potential && (mode.get() == Mode.Potential || mode.get() == Mode.Both)) {
 
                 spawns.add(spawnPool.get().set(blockPos));
             }
@@ -147,8 +148,7 @@ public class SpawnProofer extends Module {
         // Place blocks
         if (delay.get() == 0) {
             for (BlockPos blockPos : spawns) BlockUtils.place(blockPos, block, rotate.get(), -50, false);
-        }
-        else {
+        } else {
             // Check if light source
             if (isLightSource(Block.getBlockFromItem(mc.player.getInventory().getStack(block.slot()).getItem()))) {
 
@@ -165,8 +165,7 @@ public class SpawnProofer extends Module {
                 }
 
                 BlockUtils.place(selectedBlockPos, block, rotate.get(), -50, false);
-            }
-            else {
+            } else {
                 BlockUtils.place(spawns.get(0), block, rotate.get(), -50, false);
             }
         }
@@ -184,7 +183,10 @@ public class SpawnProofer extends Module {
             block instanceof AbstractPressurePlateBlock ||
             block instanceof TransparentBlock ||
             block instanceof TripwireBlock ||
-            block instanceof CarpetBlock;
+            block instanceof CarpetBlock ||
+            block instanceof LeverBlock ||
+            block instanceof AbstractRedstoneGateBlock ||
+            block instanceof AbstractRailBlock;
     }
 
     private boolean isLightSource(Block block) {

@@ -18,6 +18,7 @@ import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.misc.NameProtect;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.entity.EntityUtils;
+import meteordevelopment.meteorclient.utils.misc.Names;
 import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.meteorclient.utils.render.NametagUtils;
 import meteordevelopment.meteorclient.utils.render.RenderUtils;
@@ -111,6 +112,13 @@ public class Nametags extends Module {
 
     //Players
 
+    private final Setting<Boolean> displayHealth = sgPlayers.add(new BoolSetting.Builder()
+        .name("health")
+        .description("Shows the player's health.")
+        .defaultValue(true)
+        .build()
+    );
+
     private final Setting<Boolean> displayGameMode = sgPlayers.add(new BoolSetting.Builder()
         .name("gamemode")
         .description("Shows the player's GameMode.")
@@ -152,6 +160,14 @@ public class Nametags extends Module {
         .name("ignore-empty-slots")
         .description("Doesn't add spacing where an empty item stack would be.")
         .defaultValue(true)
+        .visible(displayItems::get)
+        .build()
+    );
+
+    private final Setting<Durability> itemDurability = sgPlayers.add(new EnumSetting.Builder<Durability>()
+        .name("durability")
+        .description("Displays item durability as either a total, percentage, or neither.")
+        .defaultValue(Durability.None)
         .visible(displayItems::get)
         .build()
     );
@@ -384,17 +400,15 @@ public class Nametags extends Module {
         String name;
         Color nameColor = PlayerUtils.getPlayerColor(player, this.nameColor.get());
 
-        if (player == mc.player) name = Modules.get().get(NameProtect.class).getName(player.getEntityName());
-        else name = player.getEntityName();
-
-        name = name + " ";
+        if (player == mc.player) name = Modules.get().get(NameProtect.class).getName(player.getName().getString());
+        else name = player.getName().getString();
 
         // Health
         float absorption = player.getAbsorptionAmount();
         int health = Math.round(player.getHealth() + absorption);
         double healthPercentage = health / (player.getMaxHealth() + absorption);
 
-        String healthText = String.valueOf(health);
+        String healthText = " " + health;
         Color healthColor;
 
         if (healthPercentage <= 0.333) healthColor = RED;
@@ -415,10 +429,12 @@ public class Nametags extends Module {
         double healthWidth = text.getWidth(healthText, shadow);
         double pingWidth = text.getWidth(pingText, shadow);
         double distWidth = text.getWidth(distText, shadow);
-        double width = nameWidth + healthWidth;
+
+        double width = nameWidth;
 
         boolean renderPlayerDistance = player != mc.cameraEntity || Modules.get().isActive(Freecam.class);
 
+        if (displayHealth.get()) width += healthWidth;
         if (displayGameMode.get()) width += gmWidth;
         if (displayPing.get()) width += pingWidth;
         if (displayDistance.get() && renderPlayerDistance) width += distWidth;
@@ -436,7 +452,7 @@ public class Nametags extends Module {
         if (displayGameMode.get()) hX = text.render(gmText, hX, hY, gamemodeColor.get(), shadow);
         hX = text.render(name, hX, hY, nameColor, shadow);
 
-        hX = text.render(healthText, hX, hY, healthColor, shadow);
+        if (displayHealth.get()) hX = text.render(healthText, hX, hY, healthColor, shadow);
         if (displayPing.get()) hX = text.render(pingText, hX, hY, pingColor.get(), shadow);
         if (displayDistance.get() && renderPlayerDistance) {
             switch (distanceColorMode.get()) {
@@ -491,6 +507,20 @@ public class Nametags extends Module {
 
                 RenderUtils.drawItem(event.drawContext, stack, (int) x, (int) y, 2, true);
 
+                if (stack.isDamageable() && itemDurability.get() != Durability.None) {
+                    text.begin(0.75, false, true);
+
+                    String damageText = switch (itemDurability.get()) {
+                        case Percentage -> String.format("%.0f%%", ((stack.getMaxDamage() - stack.getDamage()) * 100f) / (float) stack.getMaxDamage());
+                        case Total -> Integer.toString(stack.getMaxDamage() - stack.getDamage());
+                        default -> "err";
+                    };
+                    Color damageColor = new Color(stack.getItemBarColor());
+
+                    text.render(damageText, (int) x, (int) y, damageColor.a(255), true);
+                    text.end();
+                }
+
                 if (maxEnchantCount > 0 && displayEnchants.get()) {
                     text.begin(0.5 * enchantTextScale.get(), false, true);
 
@@ -543,7 +573,7 @@ public class Nametags extends Module {
         TextRenderer text = TextRenderer.get();
         NametagUtils.begin(pos);
 
-        String name = stack.getName().getString();
+        String name = Names.get(stack);
         String count = " x" + stack.getCount();
 
         double nameWidth = text.getWidth(name, shadow);
@@ -651,6 +681,12 @@ public class Nametags extends Module {
     public enum Position {
         Above,
         OnTop
+    }
+
+    public enum Durability {
+        None,
+        Total,
+        Percentage
     }
 
     public enum DistanceColorMode {

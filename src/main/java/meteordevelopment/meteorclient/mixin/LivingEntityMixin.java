@@ -10,7 +10,9 @@ import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.entity.DamageEvent;
 import meteordevelopment.meteorclient.events.entity.player.CanWalkOnFluidEvent;
 import meteordevelopment.meteorclient.systems.modules.Modules;
+import meteordevelopment.meteorclient.systems.modules.movement.elytrafly.ElytraFlightModes;
 import meteordevelopment.meteorclient.systems.modules.movement.elytrafly.ElytraFly;
+import meteordevelopment.meteorclient.systems.modules.movement.elytrafly.modes.Bounce;
 import meteordevelopment.meteorclient.systems.modules.player.OffhandCrash;
 import meteordevelopment.meteorclient.systems.modules.player.PotionSpoof;
 import meteordevelopment.meteorclient.systems.modules.render.HandView;
@@ -52,7 +54,7 @@ public abstract class LivingEntityMixin extends Entity {
     @Inject(method = "damage", at = @At("HEAD"))
     private void onDamageHead(DamageSource source, float amount, CallbackInfoReturnable<Boolean> info) {
         if (Utils.canUpdate() && getWorld().isClient)
-            MeteorClient.EVENT_BUS.post(DamageEvent.get((LivingEntity) (Object) this, source, amount));
+            MeteorClient.EVENT_BUS.post(DamageEvent.get((LivingEntity) (Object) this, source));
     }
 
     @ModifyReturnValue(method = "canWalkOnFluid", at = @At("RETURN"))
@@ -107,6 +109,18 @@ public abstract class LivingEntityMixin extends Entity {
         }
 
         return original;
+    }
+
+    private boolean previousElytra = false;
+
+    @Inject(method = "isFallFlying", at = @At("TAIL"), cancellable = true)
+    public void recastOnLand(CallbackInfoReturnable<Boolean> cir) {
+        boolean elytra = cir.getReturnValue();
+        ElytraFly elytraFly = Modules.get().get(ElytraFly.class);
+        if (previousElytra && !elytra && elytraFly.isActive() && elytraFly.flightMode.get() == ElytraFlightModes.Bounce) {
+            cir.setReturnValue(Bounce.recastElytra(mc.player));
+        }
+        previousElytra = elytra;
     }
 
     @ModifyReturnValue(method = "hasStatusEffect", at = @At("RETURN"))

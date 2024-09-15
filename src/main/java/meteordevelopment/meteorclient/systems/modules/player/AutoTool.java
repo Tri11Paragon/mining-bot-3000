@@ -19,8 +19,14 @@ import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventHandler;
 import meteordevelopment.orbit.EventPriority;
+
 import net.minecraft.block.*;
 import net.minecraft.component.DataComponentTypes;
+
+import net.fabricmc.yarn.constants.MiningLevels;
+import net.minecraft.block.*;
+import net.minecraft.enchantment.EnchantmentHelper;
+
 import net.minecraft.enchantment.Enchantments;
 import net.minecraft.item.*;
 import net.minecraft.registry.tag.BlockTags;
@@ -31,6 +37,7 @@ import java.util.function.Predicate;
 public class AutoTool extends Module {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgWhitelist = settings.createGroup("Whitelist");
+    private final SettingGroup sgOther = settings.createGroup("Other");
 
     // General
 
@@ -111,6 +118,63 @@ public class AutoTool extends Module {
         .build()
     );
 
+    private final Setting<List<Block>> silkTouchBlocks = sgOther.add(new BlockListSetting.Builder()
+        .name("silk-touch-blocks")
+        .description("Which blocks to allow breaking so long as the tool has silk touch")
+        .defaultValue(
+            Blocks.SEA_LANTERN,
+            Blocks.ICE,
+            Blocks.PACKED_ICE,
+            Blocks.BLUE_ICE,
+            Blocks.GLASS,
+            Blocks.GLASS_PANE,
+            Blocks.WHITE_STAINED_GLASS,
+            Blocks.ORANGE_STAINED_GLASS,
+            Blocks.MAGENTA_STAINED_GLASS,
+            Blocks.LIGHT_BLUE_STAINED_GLASS,
+            Blocks.YELLOW_STAINED_GLASS,
+            Blocks.LIME_STAINED_GLASS,
+            Blocks.PINK_STAINED_GLASS,
+            Blocks.GRAY_STAINED_GLASS,
+            Blocks.LIGHT_GRAY_STAINED_GLASS,
+            Blocks.CYAN_STAINED_GLASS,
+            Blocks.PURPLE_STAINED_GLASS,
+            Blocks.BLUE_STAINED_GLASS,
+            Blocks.BROWN_STAINED_GLASS,
+            Blocks.GREEN_STAINED_GLASS,
+            Blocks.RED_STAINED_GLASS,
+            Blocks.BLACK_STAINED_GLASS,
+            Blocks.WHITE_STAINED_GLASS_PANE,
+            Blocks.ORANGE_STAINED_GLASS_PANE,
+            Blocks.MAGENTA_STAINED_GLASS_PANE,
+            Blocks.LIGHT_BLUE_STAINED_GLASS_PANE,
+            Blocks.YELLOW_STAINED_GLASS_PANE,
+            Blocks.LIME_STAINED_GLASS_PANE,
+            Blocks.PINK_STAINED_GLASS_PANE,
+            Blocks.GRAY_STAINED_GLASS_PANE,
+            Blocks.LIGHT_GRAY_STAINED_GLASS_PANE,
+            Blocks.CYAN_STAINED_GLASS_PANE,
+            Blocks.PURPLE_STAINED_GLASS_PANE,
+            Blocks.BLUE_STAINED_GLASS_PANE,
+            Blocks.BROWN_STAINED_GLASS_PANE,
+            Blocks.GREEN_STAINED_GLASS_PANE,
+            Blocks.RED_STAINED_GLASS_PANE,
+            Blocks.BLACK_STAINED_GLASS_PANE
+        )
+        .build()
+    );
+
+    private final Setting<List<Item>> antiSwitchWhitelist = sgOther.add(new ItemListSetting.Builder()
+        .name("anti-switch-whitelist")
+        .description("The tools you don't want to switch away from when using. Eg World Edit Axe")
+        .defaultValue(
+            Items.WOODEN_AXE,
+            Items.STICK
+        )
+        .filter(AutoTool::isTool)
+        .build()
+    );
+
     private boolean wasPressed;
     private boolean shouldSwitch;
     private int ticks;
@@ -151,6 +215,10 @@ public class AutoTool extends Module {
         // Check if we should switch to a better tool
         ItemStack currentStack = mc.player.getMainHandStack();
 
+        for (Item i : antiSwitchWhitelist.get())
+            if (currentStack.getItem() == i)
+                return;
+
         double bestScore = -1;
         bestSlot = -1;
 
@@ -189,19 +257,32 @@ public class AutoTool extends Module {
         return antiBreak.get() && (itemStack.getMaxDamage() - itemStack.getDamage()) < (itemStack.getMaxDamage() * breakDurability.get() / 100);
     }
 
-    public static double getScore(ItemStack itemStack, BlockState state, boolean silkTouchEnderChest, boolean fortuneOre, EnchantPreference enchantPreference, Predicate<ItemStack> good) {
-        if (!good.test(itemStack) || !isTool(itemStack)) return -1;
-        if (!itemStack.isSuitableFor(state) && !(itemStack.getItem() instanceof SwordItem && (state.getBlock() instanceof BambooBlock || state.getBlock() instanceof BambooShootBlock)) && !(itemStack.getItem() instanceof ShearsItem && state.getBlock() instanceof LeavesBlock || state.isIn(BlockTags.WOOL))) return -1;
+    public double getScore(ItemStack itemStack, BlockState state, boolean silkTouchEnderChest, boolean fortuneOre, EnchantPreference enchantPreference, Predicate<ItemStack> good) {
+        if (!good.test(itemStack) || !isTool(itemStack))
+            return -1;
 
-        if (silkTouchEnderChest
-            && state.getBlock() == Blocks.ENDER_CHEST
-            && !Utils.hasEnchantments(itemStack, Enchantments.SILK_TOUCH)) {
+        boolean hasSilkTouch = Utils.hasEnchantments(itemStack, Enchantments.SILK_TOUCH));
+        boolean canMineAnyways = false;
+
+        if (hasSilkTouch) {
+            for (Block b : silkTouchBlocks.get())
+                if (b == state.getBlock())
+                    canMineAnyways = true;
+        }
+
+        // TODO: this is messy
+        if (!itemStack.isSuitableFor(state) && !canMineAnyways && !(itemStack.getItem() instanceof SwordItem && (state.getBlock() instanceof BambooBlock || state.getBlock() instanceof BambooShootBlock)) && !(itemStack.getItem() instanceof ShearsItem && state.getBlock() instanceof LeavesBlock || state.isIn(BlockTags.WOOL)))
+            return -1;
+
+        // do not attempt to switch tools when the block can be instant mined
+        if (state.getBlock().getHardness() < 0.1)
+            return -1;
+
+        if (silkTouchEnderChest && state.getBlock() == Blocks.ENDER_CHEST && !hasSilkTouch) {
             return -1;
         }
 
-        if (fortuneOre
-            && isFortunable(state.getBlock())
-            && !Utils.hasEnchantments(itemStack, Enchantments.FORTUNE)) {
+        if (fortuneOre && isFortunable(state.getBlock()) && !Utils.hasEnchantments(itemStack, Enchantments.FORTUNE)) {
             return -1;
         }
 
@@ -217,6 +298,9 @@ public class AutoTool extends Module {
 
         if (itemStack.getItem() instanceof SwordItem item && (state.getBlock() instanceof BambooBlock || state.getBlock() instanceof BambooShootBlock))
             score += 9000 + (item.getComponents().get(DataComponentTypes.TOOL).getSpeed(state) * 1000);
+        // prefer mining glass with pickaxes
+        //if (canMineAnyways && itemStack.getItem() instanceof PickaxeItem)
+        //    score += 10;
 
         return score;
     }

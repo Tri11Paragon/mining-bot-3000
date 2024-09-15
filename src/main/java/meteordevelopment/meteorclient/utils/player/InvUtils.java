@@ -55,10 +55,13 @@ public class InvUtils {
         return testInMainHand(items) || testInOffHand(items);
     }
 
-    public static boolean testInHotbar(Predicate<ItemStack> predicate) {
+    public static boolean testInHotbar(Predicate<ItemStack> predicate){
+        return testInHotbar(predicate, SlotUtils.HOTBAR_START, SlotUtils.HOTBAR_END);
+    }
+    public static boolean testInHotbar(Predicate<ItemStack> predicate, int min, int max) {
         if (testInHands(predicate)) return true;
 
-        for (int i = SlotUtils.HOTBAR_START; i < SlotUtils.HOTBAR_END; i++) {
+        for (int i = min; i < max; i++) {
             ItemStack stack = mc.player.getInventory().getStack(i);
             if (predicate.test(stack)) return true;
         }

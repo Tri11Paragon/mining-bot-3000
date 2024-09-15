@@ -1098,6 +1098,44 @@ public class HighwayBuilder extends Module {
             InvUtils.dropHand();
 
             return hotbarSlot;
+            // this was on dev
+//            if (b.mc.player.isCreative()) return b.mc.player.getInventory().selectedSlot;
+//
+//            // Find best tool
+//            double bestScore = -1;
+//            int bestSlot = -1;
+//
+//            for (int i = 0; i < b.mc.player.getInventory().main.size(); i++) {
+//                double score = AutoTool.getScore(b.mc.player.getInventory().getStack(i), blockState, false, AutoTool.EnchantPreference.None, itemStack -> {
+//                    if (noSilkTouch && EnchantmentHelper.getLevel(Enchantments.SILK_TOUCH, itemStack) != 0) return false;
+//                    return !b.dontBreakTools.get() || itemStack.getMaxDamage() - itemStack.getDamage() > 1;
+//                });
+//
+//                if (score > bestScore) {
+//                    bestScore = score;
+//                    bestSlot = i;
+//                }
+//            }
+//
+//            // Stop if not found
+//            if (bestSlot == -1) {
+//                if (error) b.error("Failed to find suitable tool for mining.");
+//                return -1;
+//            }
+//
+//            // Check if the tool is already in hotbar
+//            if (bestSlot < 9) return bestSlot;
+//
+//            // Find hotbar slot to move to
+//            int hotbarSlot = findHotbarSlot(b, true);
+//            if (hotbarSlot == -1) return -1;
+//
+//            // Move tool from inventory to hotbar
+//            InvUtils.move().from(bestSlot).toHotbar(hotbarSlot);
+//            InvUtils.dropHand();
+//
+//            return hotbarSlot;
+//            return -1;
         }
 
         protected int findBlocksToPlace(HighwayBuilder b) {

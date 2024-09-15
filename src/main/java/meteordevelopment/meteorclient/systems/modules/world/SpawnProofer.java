@@ -12,6 +12,7 @@ import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.utils.misc.Pool;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
+import meteordevelopment.meteorclient.utils.player.SlotUtils;
 import meteordevelopment.meteorclient.utils.world.BlockIterator;
 import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventHandler;
@@ -55,6 +56,20 @@ public class SpawnProofer extends Module {
         .build()
     );
 
+    private final Setting<Boolean> ignoreLightLevel = sgGeneral.add(new BoolSetting.Builder()
+        .name("ignore-light-level")
+        .description("Ignores the current light level (useful for slabbing the nether)")
+        .defaultValue(false)
+        .build()
+    );
+
+    private final Setting<Boolean> ignoreBlockType = sgGeneral.add(new BoolSetting.Builder()
+        .name("ignore-block-type")
+        .description("Ignores all attributes about the block and attempts to spawn proof anyways")
+        .defaultValue(false)
+        .build()
+    );
+
     private final Setting<Mode> mode = sgGeneral.add(new EnumSetting.Builder<Mode>()
         .name("mode")
         .description("Which spawn types should be spawn proofed.")
@@ -86,7 +101,8 @@ public class SpawnProofer extends Module {
         }
 
         // Find slot
-        boolean foundBlock = InvUtils.testInHotbar(itemStack -> blocks.get().contains(Block.getBlockFromItem(itemStack.getItem())));
+        // not sure why hotbar ends at 8 instead of 9? spawn proofing is annoying missing the last slot
+        boolean foundBlock = InvUtils.testInHotbar(itemStack -> blocks.get().contains(Block.getBlockFromItem(itemStack.getItem())), SlotUtils.HOTBAR_START, SlotUtils.HOTBAR_END+1);
         if (!foundBlock) {
             error("Found none of the chosen blocks in hotbar");
             toggle();
@@ -98,8 +114,13 @@ public class SpawnProofer extends Module {
         spawns.clear();
 
         int lightLevel = newMobSpawnLightLevel.get() ? 0 : 7;
+        if (ignoreLightLevel.get())
+            lightLevel = 16;
         BlockIterator.register(range.get(), range.get(), (blockPos, blockState) -> {
             BlockUtils.MobSpawn spawn = BlockUtils.isValidMobSpawn(blockPos, blockState, lightLevel);
+            if (ignoreBlockType.get() && !(mc.world.getBlockState(blockPos).getBlock() instanceof AirBlock))
+                spawn = BlockUtils.MobSpawn.Always;
+
 
             if ((spawn == BlockUtils.MobSpawn.Always && (mode.get() == Mode.Always || mode.get() == Mode.Both)) ||
                     spawn == BlockUtils.MobSpawn.Potential && (mode.get() == Mode.Potential || mode.get() == Mode.Both)) {
